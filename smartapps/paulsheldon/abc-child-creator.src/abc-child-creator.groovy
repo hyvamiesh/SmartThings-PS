@@ -2,7 +2,7 @@
  *
  *	Child Creator - Advanced Button Controller
  *
- *	Author: SmartThings, modified by Bruce Ravenel, Dale Coffing, Stephan Hackett, Paul Sheldon, Gabor Szabados
+ *	Author: SmartThings, modified by Bruce Ravenel, Dale Coffing, Stephan Hackett, Paul Sheldon
  *  Maintained by: Paul Sheldon with thanks to Stephan Hackett
  *
  *
@@ -10,30 +10,33 @@
  * 1/14/18 - updated Version check code
  * 1/15/18 - added icon support for Inovelli Switches (NZW30S and NZW31S)
  *		   - small adjustments to "Configure Button" page layout
- * 1/28/18 - Added Icons and details for Remotec ZRC-90US Button Controller.
+ * 1/28/18 - Added Icons and details for Remote ZRC-90US Button Controller.
  * 2/08/18 - reformatted Button Config Preview
  * 2/12/18 - re-did getDescription() to only display Pushed/Held preview if it exists
  *			restructured detailsMap and button config build for easy editing
  *			made subValue inputs "hidden" and "required" when appropriate
  *
  * == Code now maintained by Paul Sheldon ==
- * 05/02/19 - Added images and code for Hue Dimmer Switches
- *          - Added options for Color Temperature
- *          - Reworked some code
- * 09/25/19 - updated volume control, play/pause, next/previous track and mute/unmute for the
- *			  new capabilities of the Sonos speakers, code provided by Gabor Szabados
- * 02/01/20  - added support (beta) for fan control
- *             added support for Inovelli Red Series Switch & Dimmer (inc config button 7)
+ * 2019-02-05 Added images and code for Hue Dimmer Switches
+ *            Added options for Color Temperature
+ *            Reworked some code
+ * 2019-09-25 Updated volume control, play/pause, next/previous track and mute/unmute for the
+ *			  New capabilities of the Sonos speakers, code provided by Gabor Szabados
+ * 2020-01-02 Added support (beta) for fan control
+ *            Added support for Inovelli Red Series Switch & Dimmer (inc config button 7)
+ * 2020-05-05 Added support WS200 Dimmer & Switch
+ *            Added support for Ikea Buttons provided by hyvamiesh
+ *            Dimming lights does not switch light off provided by hyvamiesh
  *
  *	DO NOT PUBLISH !!!!
  */
 
-def version(){"v0.3.200201"}
+def version(){"v1.200505"}
 
 definition(
         name: "ABC Child Creator",
         namespace: "paulsheldon",
-        author: "Stephan Hackett / Paul Sheldon / Gabor Szabados [Sonos]",
+        author: "Stephan Hackett / Paul Sheldon",
         description: "SHOULD NOT BE PUBLISHED",
         category: "My Apps",
         parent: "paulsheldon:ABC Manager",
@@ -62,8 +65,9 @@ def chooseButton() {
             state.buttonType = getButtonType(buttonDevice.typeName)
             log.debug "Device Type is now set to: " + state.buttonType
             state.buttonCount = manualCount ?: buttonDevice.currentValue('numberOfButtons')
-            log.debug "Device has " + state.buttonCount + " buttons."
-            //if(state.buttonCount==null) state.buttonCount = buttonDevice.currentValue('numButtons')	//added for kyse minimote(hopefully will be updated to correct attribute name)
+
+            log.debug "Device has " + state.buttonCount + "Buttons."
+            //if(state.buttonCount==null) state.buttonCount = buttonDevice.currentValue('numButtons')	//added for Kyse minimote(hopefully will be updated to correct attribute name)
             section("Step 2: Configure Buttons for Selected Device") {
                 if (state.buttonCount < 1) {
                     paragraph "The selected button device did not report the number of buttons it has. Please specify in the Advanced Config section below."
@@ -170,16 +174,16 @@ def isReq(myFeature) {
 }
 
 def getDescription(dNumber) {
-    def descript = ""
+    def description = ""
     if (!(settings.find { it.key.contains("_${dNumber}_") })) return "Tap to configure"
     if (settings.find {
         it.key.contains("_${dNumber}_pushed")
-    }) descript = "\nPUSHED:" + getDescDetails(dNumber, "_pushed") + "\n"
+    }) description = "\nPUSHED:" + getDescDetails(dNumber, "_pushed") + "\n"
     if (settings.find {
         it.key.contains("_${dNumber}_held")
-    }) descript = descript + "\nHELD:" + getDescDetails(dNumber, "_held") + "\n"
-    //if(anySettings) descript = "PUSHED:"+getDescDetails(dNumber,"_pushed")+"\n\nHELD:"+getDescDetails(dNumber,"_held")//"CONFIGURED : Tap to edit"
-    return descript
+    }) description = description + "\nHELD:" + getDescDetails(dNumber, "_held") + "\n"
+    //if(anySettings) description = "PUSHED:"+getDescDetails(dNumber,"_pushed")+"\n\nHELD:"+getDescDetails(dNumber,"_held")//"CONFIGURED : Tap to edit"
+    return description
 }
 
 def getDescDetails(bNum, type) {
@@ -393,20 +397,19 @@ def colourTempDown(device, decTemp) {
     def newTemp = currentTemp - decTemp < 2200 ? 2200 : currentTemp - decTemp
     device.setColorTemperature(newTemp)
     def colorTempName = colourTempName(newTemp)
-    sendEvent(name: "colorName", value: colorTempName)
+      sendEvent(name: "colorName", value: colorTempName)
     log.debug "Colour Temp Changed to $colorTempName"
 }
 
 private colourTempName(value) {
-    def newColor = "White"
     if (value != null) {
-        if (value < 3000) newColor = "Warm"
-        else if (value < 4000) newColor = "Warm White"
-        else if (value < 5000) newColor = "Cool White"
-        else if (value < 6000) newColor = "Daylight"
-        else if (value >= 6000) newColor = "Cool Daylight"
+       if (value <2500) return "Warm Glow"
+       else if (value <3000) return "Warm White"
+       else if (value < 5000) return "Cool White"
+       else if (value < 6000)  return "Daylight"
+       else return "Cool Daylight"
     }
-    return newColor
+    return "White"
 }
 
 def levelUp(device, incLevel) {
@@ -569,7 +572,7 @@ private def textHelp() {
                 "	Push Notifications \n" +
                 "	SMS Notifications"
         }
-        section("** Quirk for HS-WD100+ on Button 5 & 6:") {
+       section("** Quirk for HS-WD100+ on Button 5 & 6:") {
             paragraph "Because a dimmer switch already uses Press&Hold to manually set the dimming level" +
                 " please be aware of this operational behavior. If you only want to manually change" +
                 " the dim level to the lights that are wired to the switch, you will automatically" +
@@ -599,7 +602,8 @@ def getButtonType(buttonName) {
     return buttonName
 }
 
-def getSpecText() {
+def getSpecText(currentButton) {
+    currentButton=(currentButton==null ? state.currentButton : currentButton)
     if (state.buttonType == "Lutron Pico") {
         switch (state.currentButton) {
             case 1: return "Top Button"; break
@@ -660,6 +664,41 @@ def getSpecText() {
             case 8: return "Single Tap Lower Paddle"; break
         }
     }
+
+    if (state.buttonType.contains("WD200+ Dimmer")) {
+           switch (state.currentButton) {
+               case 1: return "Double-Tap Upper Paddle"; break
+               case 2: return "Double-Tap Lower Paddle"; break
+               case 3: return "Triple-Tap Upper Paddle"; break
+               case 4: return "Triple-Tap Lower Paddle"; break
+               case 5: return "Press & Hold Upper Paddle\n(See user guide for quirks)"; break
+               case 6: return "Press & Hold Lower Paddle\n(See user guide for quirks)"; break
+               case 7: return "Single Tap Upper Paddle\n(See user guide for quirks)"; break
+               case 8: return "Single Tap Lower Paddle\n(See user guide for quirks)"; break
+               case 9: return "4X-Tap Upper Paddle"; break
+               case 10: return "4X-Tap Lower Paddle"; break
+               case 11: return "5X-Tap Upper Paddle"; break
+               case 12: return "5X-Tap Lower Paddle"; break
+           }
+       }
+
+        if (state.buttonType.contains("WS200+ Switch")) {
+               switch (state.currentButton) {
+                   case 1: return "Double-Tap Upper Paddle"; break
+                   case 2: return "Double-Tap Lower Paddle"; break
+                   case 3: return "Triple-Tap Upper Paddle"; break
+                   case 4: return "Triple-Tap Lower Paddle"; break
+                   case 5: return "Press & Hold Upper Paddle"; break
+                   case 6: return "Press & Hold Lower Paddle"; break
+                   case 7: return "Single Tap Upper Paddle"; break
+                   case 8: return "Single Tap Lower Paddle"; break
+                   case 9: return "4X-Tap Upper Paddle"; break
+                   case 10: return "4X-Tap Lower Paddle"; break
+                   case 11: return "5X-Tap Upper Paddle"; break
+                   case 12: return "5X-Tap Lower Paddle"; break
+               }
+           }
+
     if (state.buttonType.contains("Inovelli")) {           
         switch (state.currentButton) {
             case 1: return "NOT OPERATIONAL - DO NOT USE"; break
@@ -671,6 +710,7 @@ def getSpecText() {
             case 7: if (state.buttonType.contains("Red")) { return "1x Tap Config Button"; break; }
         }
     }
+
     if (state.buttonType.contains("ZRC-90")) {
         switch (state.currentButton) {
             case 1: return "Tap or Hold Button 1"; break
@@ -691,35 +731,39 @@ def getSpecText() {
             case 16: return "2X Tap Button 8\nHold Not Available"; break
         }
     }
+
+     if (state.buttonType.contains("Zen27")) {
+          switch (currentButton) {
+              case 1: return "1 x up"; break
+              case 2: return "1 x down"; break
+              case 3: return "2 x up"; break
+              case 4: return "2 x down"; break
+              case 5: return "3 x up"; break
+              case 6: return "3 x down"; break
+              case 7: return "4 x up"; break
+              case 8: return "4 x down"; break
+              case 9: return "5 x up"; break
+              case 10: return "5 x down"; break
+            }
+     }
+     
     if (state.buttonType == "Ikea Button") {
-        if (state.buttonCount == 5) {
-            switch (state.currentButton) {
-                case 1: return "Up Button"; break
-                case 2: return "Right Button"; break
-                case 3: return "Down Button"; break
-                case 4: return "Left Button"; break
-                case 5: return "Middle Button"; break
-            }
-        }
-        if (state.buttonCount == 2) {
-            switch (state.currentButton) {
-                case 1: return "Up Button"; break
-                case 2: return "Down Button"; break
-            }
-        }
+          if (state.buttonCount == 5) {
+              switch (state.currentButton) {
+                  case 1: return "Up Button"; break
+                  case 2: return "Right Button"; break
+                  case 3: return "Down Button"; break
+                  case 4: return "Left Button"; break
+                  case 5: return "Middle Button"; break
+              }
+          }
+          if (state.buttonCount == 2) {
+              switch (state.currentButton) {
+                  case 1: return "Up Button"; break
+                  case 2: return "Down Button"; break
+              }
+          }
+
     }
     return "Not Specified By Device"
 }
-
-/*
-FOR NEW INPUTS
-1. add input to config
-2. add info to detailMappings including sub-value if needed
-3. ensure correct type is used in map..or create a new one with its own formattedPage
-
-FOR NEW BUTTON DEVICE TYPES
-1. ensure device reports buttonNumber
-2. if not, add sendEvent to DTH as needed OR just enter manually
-3. add any special instructions to getSpecText() using dth name
-4. create pics for each button using dthName+dNumber
-*/
